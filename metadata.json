@@ -1,0 +1,5 @@
+{
+  "name": "DocuMind AI",
+  "description": "An intelligent document assistant that uses RAG (Retrieval-Augmented Generation) and Gemini AI to let you chat with your PDFs and text files, extract insights, and summarize complex information.",
+  "requestFramePermissions": []
+}
