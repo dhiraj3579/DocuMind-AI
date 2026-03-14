@@ -10,6 +10,21 @@ DocuMind AI is an intelligent document assistant that turns your static PDFs and
 - **Source Attribution:** The assistant tells you exactly which document it used to find the answer.
 - **Modern UI:** A clean, responsive interface built with React, Tailwind CSS, and Framer Motion.
 
+## 🚀 Deployment
+
+### Deploying to Vercel
+
+This project is configured for easy deployment on Vercel.
+
+1.  **Push your code to GitHub.**
+2.  **Import the project to Vercel:** Go to [vercel.com](https://vercel.com) and import your repository.
+3.  **Configure Environment Variables:** In the Vercel dashboard, add the following environment variable:
+    -   `CUSTOM_GEMINI_API_KEY`: Your Google Gemini API Key.
+4.  **Deploy:** Vercel will automatically detect the configuration and deploy your app.
+
+> [!NOTE]
+> **State Persistence:** This version uses an in-memory vector store for simplicity. On Vercel (and other serverless platforms), the server may restart frequently, which will clear your uploaded documents. For production use, consider integrating a persistent database like Pinecone, Supabase, or MongoDB.
+
 ## 🛠️ Tech Stack
 
 - **Frontend:** React, Tailwind CSS, Lucide Icons, Framer Motion.
