@@ -7,7 +7,19 @@ import { GoogleGenAI } from "@google/genai";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
-const pdf = require("pdf-parse");
+
+let pdfParser: any = null;
+function getPdfParser() {
+  if (!pdfParser) {
+    try {
+      pdfParser = require("pdf-parse");
+    } catch (err: any) {
+      console.error("Failed to load pdf-parse:", err);
+      throw new Error(`PDF processing library failed to load: ${err.message}`);
+    }
+  }
+  return pdfParser;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -109,6 +121,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     if (file.mimetype === "application/pdf") {
       try {
         console.log("Attempting to parse PDF...");
+        const pdf = getPdfParser();
         console.log("PDF parser type:", typeof pdf);
         if (typeof pdf !== 'function') {
           throw new Error("PDF parser is not a function. Import might have failed.");
@@ -262,8 +275,6 @@ async function setupVite() {
     });
   }
 }
-
-setupVite().catch(err => console.error("Vite setup error:", err));
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
