@@ -34,14 +34,21 @@ export default function App() {
   const checkApiKey = async () => {
     try {
       const res = await fetch("/api/health");
+      if (!res.ok) {
+        throw new Error(`Server returned ${res.status}`);
+      }
       const data = await res.json();
       if (data.apiKeyMissing) {
         setApiKeyStatus({ status: 'missing', message: 'API Key not configured' });
       } else {
         setApiKeyStatus({ status: 'valid' });
       }
-    } catch (error) {
-      setApiKeyStatus({ status: 'missing', message: 'Failed to check API key' });
+    } catch (error: any) {
+      console.error("Failed to check API key", error);
+      setApiKeyStatus({ 
+        status: 'missing', 
+        message: `Connection Error: ${error.message}. The server might still be starting up or is misconfigured.` 
+      });
     }
   };
 

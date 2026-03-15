@@ -4,8 +4,6 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { GoogleGenAI } from "@google/genai";
-// @ts-ignore
-import pdf from "pdf-parse/lib/pdf-parse.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,6 +13,17 @@ const PORT = 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// Lazy load pdf-parse
+let pdfParser: any = null;
+async function getPdfParser() {
+  if (!pdfParser) {
+    // @ts-ignore
+    const mod = await import("pdf-parse/lib/pdf-parse.js");
+    pdfParser = mod.default || mod;
+  }
+  return pdfParser;
+}
 
 // In-memory vector store
 interface DocumentChunk {
@@ -74,14 +83,20 @@ function cosineSimilarity(vecA: number[], vecB: number[]) {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
+app.get("/api", (req, res) => {
+  res.json({ message: "DocuRAG API is running" });
+});
+
 // API Routes
 app.get("/api/health", (req, res) => {
+  console.log("Health check requested");
   const key = process.env.CUSTOM_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   res.json({ 
     status: "ok", 
     apiKeyMissing: !key || key === "YOUR_API_KEY",
     env: process.env.NODE_ENV,
-    isVercel: !!process.env.VERCEL
+    isVercel: !!process.env.VERCEL,
+    time: new Date().toISOString()
   });
 });
 
@@ -101,6 +116,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     if (file.mimetype === "application/pdf") {
       try {
         console.log("Attempting to parse PDF...");
+        const pdf = await getPdfParser();
         const pdfData = await pdf(file.buffer);
         text = pdfData.text;
         console.log("PDF parsed successfully, text length:", text.length);
@@ -234,20 +250,24 @@ app.post("/api/clear", (req, res) => {
 });
 
 // Vite middleware for development
-if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
-  const { createServer: createViteServer } = await import("vite");
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: "spa",
-  });
-  app.use(vite.middlewares);
-} else if (!process.env.VERCEL) {
-  const distPath = path.join(process.cwd(), "dist");
-  app.use(express.static(distPath));
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
-  });
+async function setupVite() {
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+    const { createServer: createViteServer } = await import("vite");
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else if (!process.env.VERCEL) {
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
 }
+
+setupVite().catch(err => console.error("Vite setup error:", err));
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -259,7 +279,11 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   }
 });
 
-if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+const isVercel = !!process.env.VERCEL;
+
+if (!isVercel) {
+  setupVite().catch(err => console.error("Vite setup error:", err));
+  
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
