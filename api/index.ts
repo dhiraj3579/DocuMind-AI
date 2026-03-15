@@ -3,8 +3,9 @@ import multer from "multer";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
-import { createRequire } from "module";
 import { GoogleGenAI } from "@google/genai";
+// @ts-ignore
+import pdf from "pdf-parse/lib/pdf-parse.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,21 +15,6 @@ const PORT = 3000;
 
 app.use(cors());
 app.use(express.json());
-
-// Lazy load pdf-parse to prevent boot errors on Vercel
-let pdfParser: any = null;
-async function getPdfParser() {
-  if (!pdfParser) {
-    try {
-      const require = createRequire(import.meta.url);
-      pdfParser = require("pdf-parse");
-    } catch (e) {
-      console.error("Failed to load pdf-parse:", e);
-      throw new Error("PDF processing library failed to load. Please contact support.");
-    }
-  }
-  return pdfParser;
-}
 
 // In-memory vector store
 interface DocumentChunk {
@@ -113,9 +99,18 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     let text = "";
 
     if (file.mimetype === "application/pdf") {
-      const pdf = await getPdfParser();
-      const pdfData = await pdf(file.buffer);
-      text = pdfData.text;
+      try {
+        console.log("Attempting to parse PDF...");
+        const pdfData = await pdf(file.buffer);
+        text = pdfData.text;
+        console.log("PDF parsed successfully, text length:", text.length);
+      } catch (e: any) {
+        console.error("PDF Parse Error Details:", e);
+        // Fallback or more descriptive error
+        return res.status(500).json({ 
+          error: `Failed to parse PDF document. Technical details: ${e.message || "Unknown error"}. Please ensure the PDF is not password protected.` 
+        });
+      }
     } else if (file.mimetype.startsWith("text/")) {
       text = file.buffer.toString("utf-8");
     } else {
