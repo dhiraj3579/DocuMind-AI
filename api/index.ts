@@ -1,11 +1,16 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import multer from "multer";
 import cors from "cors";
 import path from "path";
+import { fileURLToPath } from "url";
+import { createRequire } from "module";
 import { GoogleGenAI } from "@google/genai";
-// @ts-ignore
-import pdf from "pdf-parse/lib/pdf-parse.js";
+
+const require = createRequire(import.meta.url);
+const pdf = require("pdf-parse");
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 3000;
@@ -232,6 +237,7 @@ Answer:`;
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
