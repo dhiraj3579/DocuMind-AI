@@ -4,6 +4,10 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { GoogleGenAI } from "@google/genai";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const pdf = require("pdf-parse");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,17 +17,6 @@ const PORT = 3000;
 
 app.use(cors());
 app.use(express.json());
-
-// Lazy load pdf-parse
-let pdfParser: any = null;
-async function getPdfParser() {
-  if (!pdfParser) {
-    // @ts-ignore
-    const mod = await import("pdf-parse/lib/pdf-parse.js");
-    pdfParser = mod.default || mod;
-  }
-  return pdfParser;
-}
 
 // In-memory vector store
 interface DocumentChunk {
@@ -116,7 +109,10 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     if (file.mimetype === "application/pdf") {
       try {
         console.log("Attempting to parse PDF...");
-        const pdf = await getPdfParser();
+        console.log("PDF parser type:", typeof pdf);
+        if (typeof pdf !== 'function') {
+          throw new Error("PDF parser is not a function. Import might have failed.");
+        }
         const pdfData = await pdf(file.buffer);
         text = pdfData.text;
         console.log("PDF parsed successfully, text length:", text.length);
