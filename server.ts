@@ -4,7 +4,8 @@ import multer from "multer";
 import cors from "cors";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
-import { PDFParse } from "pdf-parse";
+// @ts-ignore
+import pdf from "pdf-parse/lib/pdf-parse.js";
 
 const app = express();
 const PORT = 3000;
@@ -33,11 +34,13 @@ function getAI() {
   const cleanKey = rawKey.trim().replace(/^["']|["']$/g, "");
 
   if (!cleanKey || cleanKey === "YOUR_API_KEY") {
-    throw new Error("Gemini API key is not configured. Please set CUSTOM_GEMINI_API_KEY in the Secrets panel.");
+    console.error("API Key Check: Missing or placeholder key detected.");
+    throw new Error("Gemini API key is not configured. Please set CUSTOM_GEMINI_API_KEY in the Vercel Environment Variables.");
   }
 
   // Re-initialize if the key has changed or if it's the first time
   if (!ai || cleanKey !== currentApiKey) {
+    console.log("API Key Check: Initializing Gemini AI with key (length: " + cleanKey.length + ")");
     ai = new GoogleGenAI({ apiKey: cleanKey });
     currentApiKey = cleanKey;
   }
@@ -97,8 +100,7 @@ async function startServer() {
       let text = "";
 
       if (file.mimetype === "application/pdf") {
-        const parser = new PDFParse({ data: file.buffer });
-        const pdfData = await parser.getText();
+        const pdfData = await pdf(file.buffer);
         text = pdfData.text;
       } else if (file.mimetype.startsWith("text/")) {
         text = file.buffer.toString("utf-8");
@@ -235,7 +237,7 @@ Answer:`;
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (!process.env.VERCEL) {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
