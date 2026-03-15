@@ -8,6 +8,31 @@ import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
 
+// Polyfill DOMMatrix for pdf-parse/pdf.js compatibility in Node.js
+if (typeof (global as any).DOMMatrix === 'undefined') {
+  (global as any).DOMMatrix = class DOMMatrix {
+    constructor() {}
+    static fromMatrix() { return new DOMMatrix(); }
+    static fromFloat32Array() { return new DOMMatrix(); }
+    static fromFloat64Array() { return new DOMMatrix(); }
+  };
+}
+if (typeof (global as any).Path2D === 'undefined') {
+  (global as any).Path2D = class Path2D {};
+}
+if (typeof (global as any).DOMPoint === 'undefined') {
+  (global as any).DOMPoint = class DOMPoint {
+    constructor(x = 0, y = 0, z = 0, w = 1) {}
+    static fromPoint() { return new DOMPoint(); }
+  };
+}
+if (typeof (global as any).DOMRect === 'undefined') {
+  (global as any).DOMRect = class DOMRect {
+    constructor(x = 0, y = 0, width = 0, height = 0) {}
+    static fromRect() { return new DOMRect(); }
+  };
+}
+
 let pdfParser: any = null;
 function getPdfParser() {
   if (!pdfParser) {
